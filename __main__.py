@@ -1,11 +1,16 @@
-from pydantic import BaseModel, Field, constr, validator, ConfigDict
+from pydantic import BaseModel, Field, constr, validator, ConfigDict, ValidationError
 from typing import Optional
 from typing import List
 from typing import Dict
 from typing import Union, Annotated
 from typing_extensions import TypedDict
 from enum import Enum
-import os
+#from enigmapython import *
+from enigmapython.SwappablePlugboard import SwappablePlugboard
+from enigmapython.Rotor import Rotor 
+from enigmapython.Reflector import Reflector
+from enigmapython.EtwPassthrough import EtwPassthrough
+from enigmapython.Enigma import Enigma
 
 
 allowed_chars_regex = r"^[A-Z]+$"
@@ -19,8 +24,8 @@ class Rotors (BaseModel):
     List[RotorConfig] 
 
 class PlugboardWiring(BaseModel):
-    from_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
-    to_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
+    from_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
+    to_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
 
 class Plugboard (BaseModel):
     wirings: List[PlugboardWiring] = Field(max_items=10)
@@ -28,7 +33,7 @@ class Plugboard (BaseModel):
 class EnigmaBaseRequest (BaseModel):
     plugboard: Optional[Plugboard]
     auto_increment_rotors: bool = Field(default=True)
-    cleartext: str = Field(regex=allowed_chars_regex, min_length=1, max_length=128)
+    cleartext: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=128)
 
 class EnigmaBaseResponse (BaseModel):
     cyphertext: str
@@ -54,7 +59,50 @@ class EnigmaIResponse(EnigmaBaseResponse):
     pass
 
 def main(args):
-  print(args)
-  print(os.environ.get('__OW_PATH'))
-  print(os.environ.get('__OW_API_HOST'))
-  return args
+    path_string = args.get("__ow_path")[1:]
+    path_elements = path_string.split("/")
+    if len(path_elements) == 2:
+        match path_elements[0]:
+            case "I":
+                try:
+                    request = EnigmaIRequest(
+                                auto_increment_rotors=args.get("auto_increment_rotors"),
+                                cleartext=args.get("cleartext"),
+                                rotors=args.get("rotors"),
+                                reflector=args.get("reflector"),
+                                plugboard=args.get("plugboard")
+                                )
+                except ValidationError as e:
+                    return {
+                        "statusCode": 400,
+                        "body": e.errors()
+                        }
+                match path_elements[1]:
+                    case "encrypt":
+
+                        rotors = []
+                        for i in range(len(request.rotors)):
+                            rotor = Rotor.get_instance_from_tag("I_"+request.rotors[i].type)
+                            rotor.position = request.rotors[i].position
+                            rotor.ring = request.rotors[i].ring
+                            rotors.append(rotor)
+                        rotors.reverse()
+                        
+                        reflector = Reflector.get_instance_from_tag(request.reflector)
+
+                        etw = EtwPassthrough()
+
+                        plugboard = SwappablePlugboard()   
+                        for plugboard_wiring in request.plugboard.wirings:
+                            plugboard.swap(plugboard_wiring.from_letter.lower(),plugboard_wiring.to_letter.lower())
+
+                        enigma = Enigma(
+                            plugboard = plugboard,
+                            rotors = rotors,
+                            reflector = reflector,
+                            etw = etw,
+                            auto_increment_rotors = request.auto_increment_rotors
+                            )
+
+                        response = EnigmaIResponse(cyphertext=enigma.input_string(request.cleartext.lower()).upper())
+                        return {"body": response.model_dump()}
