@@ -5,7 +5,7 @@ from typing import Dict
 from typing import Union, Annotated
 from typing_extensions import TypedDict
 from enum import Enum
-#from enigmapython import *
+from enigmapython import *
 from enigmapython.SwappablePlugboard import SwappablePlugboard
 from enigmapython.Rotor import Rotor 
 from enigmapython.Reflector import Reflector

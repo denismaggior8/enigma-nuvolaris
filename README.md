@@ -45,3 +45,37 @@ curl -u $AUTH  https://nuvolaris.dev/api/v1/namespaces/_/limits
 
 
 
+curl -X 'POST' \
+  'https://nuvolaris.dev/api/v1/web/dmaggiorotto/Test/enigma/I/encrypt' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "plugboard": {
+    "wirings": [
+      {
+        "from_letter": "D",
+        "to_letter": "Z"
+      }
+    ]
+  },
+  "auto_increment_rotors": true,
+  "cleartext": "DENIS",
+  "rotors": [
+    {
+      "position": 0,
+      "ring": 0,
+      "type": "I"
+    },
+    {
+      "position": 0,
+      "ring": 0,
+      "type": "I"
+    },
+    {
+      "position": 0,
+      "ring": 0,
+      "type": "I"
+    }
+  ],
+  "reflector": "UKW-A"
+}'
