@@ -106,3 +106,19 @@ def main(args):
 
                         response = EnigmaIResponse(cyphertext=enigma.input_string(request.cleartext.lower()).upper())
                         return {"body": response.model_dump()}
+                    
+                    case _:
+                        return {
+                            "statusCode": 404,
+                            "body": {"error":"Resource not found"}
+                        }
+            case _:
+                return {
+                    "statusCode": 404,
+                    "body": {"error":"Resource not found"}
+                }
+    else:
+        return {
+                "statusCode": 404,
+                "body": {"error":"Resource not found"}
+               }
