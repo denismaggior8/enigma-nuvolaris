@@ -24,8 +24,8 @@ class ResponseRotorConfig (BaseModel):
     position: int = Field(ge=0, le=25, default=0)
 
 class PlugboardWiring(BaseModel):
-    from_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
-    to_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
+    from_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
+    to_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
 
 class Plugboard (BaseModel):
     wirings: List[PlugboardWiring] = Field(max_items=10)
@@ -33,7 +33,7 @@ class Plugboard (BaseModel):
 class EnigmaBaseRequest (BaseModel):
     plugboard: Optional[Plugboard]
     auto_increment_rotors: bool = Field(default=True)
-    cleartext: str = Field(regex=allowed_chars_regex, min_length=1, max_length=128)
+    cleartext: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=128)
 
 class EnigmaBaseResponse (BaseModel):
     cyphertext: str
@@ -82,13 +82,16 @@ def main(args):
                     case "encrypt":
 
                         rotors = []
-                        for i in range(len(request.rotors)):
-                            rotor = Rotor.get_instance_from_tag("I_"+request.rotors[i].type)
-                            rotor.position = request.rotors[i].position
-                            rotor.ring = request.rotors[i].ring
+                        #request.rotors.reverse()
+                        #for i in range(len(request.rotors)):
+                        for index,rotorConfig in enumerate(request.rotors):
+                            print(rotorConfig)
+                            rotor = Rotor.get_instance_from_tag("I_"+rotorConfig.type)
+                            rotor.position = rotorConfig.position
+                            rotor.ring = rotorConfig.ring
                             rotors.append(rotor)
-                        #rotors.reverse()
-                        
+                        rotors.reverse()
+
                         reflector = Reflector.get_instance_from_tag(request.reflector)
 
                         etw = EtwPassthrough()
@@ -96,7 +99,7 @@ def main(args):
                         plugboard = SwappablePlugboard()   
                         for plugboard_wiring in request.plugboard.wirings:
                             plugboard.swap(plugboard_wiring.from_letter.lower(),plugboard_wiring.to_letter.lower())
-
+                    
                         enigma = Enigma(
                             plugboard = plugboard,
                             rotors = rotors,
@@ -104,15 +107,15 @@ def main(args):
                             etw = etw,
                             auto_increment_rotors = request.auto_increment_rotors
                             )
-                        
 
                         cypher_text = enigma.input_string(request.cleartext.lower()).upper()
-    
+
                         new_rotors : ResponseRotorConfig = []
-                        for i in range(len(enigma.rotors)):
-                            response_rotor_config = ResponseRotorConfig(position=enigma.rotors[i].position,ring=enigma.rotors[i].ring)
-                            new_rotors.append(response_rotor_config)
-                        #new_rotors.reverse()
+                        
+                        for index,rotorConfig in enumerate(rotors):
+                            responseRotorConfig = ResponseRotorConfig(position=enigma.rotors[index].position,ring=enigma.rotors[index].ring)
+                            new_rotors.append(responseRotorConfig)
+                        new_rotors.reverse()
 
                         response = EnigmaIResponse(cyphertext=cypher_text,rotors=new_rotors)
                         

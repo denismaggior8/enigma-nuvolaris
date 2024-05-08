@@ -14,7 +14,7 @@ nuv -wsk action create /dmaggiorotto/Test/enigma --kind python:36  --web true  e
 
 ###
 docker run --rm -v "$PWD:/tmp" --platform linux/amd64 python:3.11.9-bullseye bash -c "cd tmp && pip install virtualenv && virtualenv virtualenv && source virtualenv/bin/activate && pip install -r requirements.txt"
-zip -r enigma.zip virtualenv __main__.py
+rmenigma.zip ; zip -r enigma.zip virtualenv __main__.py
 nuv -wsk action update /dmaggiorotto/Test/enigma --kind python:3.11  --web true  enigma.zip
 ###
 
@@ -62,7 +62,7 @@ curl -X 'POST' \
   "cleartext": "DENIS",
   "rotors": [
     {
-      "position": 0,
+      "position": 1,
       "ring": 0,
       "type": "I"
     },
