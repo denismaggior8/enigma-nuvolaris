@@ -16,16 +16,16 @@ from enigmapython.Enigma import Enigma
 allowed_chars_regex = r"^[A-Z]+$"
 
 
-class RotorConfig (BaseModel):
+class RequestRotorConfig (BaseModel):
     position: int = Field(ge=0, le=25, default=0)
-    ring: int = Field(ge=0, le=25, default=1)
+    ring: int = Field(ge=0, le=25, default=0)
 
-class Rotors (BaseModel):
-    List[RotorConfig] 
+class ResponseRotorConfig (BaseModel):
+    position: int = Field(ge=0, le=25, default=0)
 
 class PlugboardWiring(BaseModel):
-    from_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
-    to_letter: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=1)
+    from_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
+    to_letter: str = Field(regex=allowed_chars_regex, min_length=1, max_length=1)
 
 class Plugboard (BaseModel):
     wirings: List[PlugboardWiring] = Field(max_items=10)
@@ -33,10 +33,11 @@ class Plugboard (BaseModel):
 class EnigmaBaseRequest (BaseModel):
     plugboard: Optional[Plugboard]
     auto_increment_rotors: bool = Field(default=True)
-    cleartext: str = Field(pattern=allowed_chars_regex, min_length=1, max_length=128)
+    cleartext: str = Field(regex=allowed_chars_regex, min_length=1, max_length=128)
 
 class EnigmaBaseResponse (BaseModel):
     cyphertext: str
+    rotors: List[ResponseRotorConfig]
 
 class EnigmaIRotorsEnum(str, Enum):
     rotor_I = 'I'
@@ -48,11 +49,11 @@ class EnigmaIReflectorsEnum(str, Enum):
     reflector_B = 'UKW-B'
     reflector_C = 'UKW-C'
 
-class EnigmaIRotorConfig (RotorConfig):
+class EnigmaIRequestRotorConfig (RequestRotorConfig):
     type: EnigmaIRotorsEnum
 
 class EnigmaIRequest(EnigmaBaseRequest):
-    rotors: List[EnigmaIRotorConfig] = Field(min_items=3, max_items=3)
+    rotors: List[EnigmaIRequestRotorConfig] = Field(min_items=3, max_items=3)
     reflector: Optional[EnigmaIReflectorsEnum]
      
 class EnigmaIResponse(EnigmaBaseResponse):
@@ -86,7 +87,7 @@ def main(args):
                             rotor.position = request.rotors[i].position
                             rotor.ring = request.rotors[i].ring
                             rotors.append(rotor)
-                        rotors.reverse()
+                        #rotors.reverse()
                         
                         reflector = Reflector.get_instance_from_tag(request.reflector)
 
@@ -103,8 +104,18 @@ def main(args):
                             etw = etw,
                             auto_increment_rotors = request.auto_increment_rotors
                             )
+                        
 
-                        response = EnigmaIResponse(cyphertext=enigma.input_string(request.cleartext.lower()).upper())
+                        cypher_text = enigma.input_string(request.cleartext.lower()).upper()
+    
+                        new_rotors : ResponseRotorConfig = []
+                        for i in range(len(enigma.rotors)):
+                            response_rotor_config = ResponseRotorConfig(position=enigma.rotors[i].position,ring=enigma.rotors[i].ring)
+                            new_rotors.append(response_rotor_config)
+                        #new_rotors.reverse()
+
+                        response = EnigmaIResponse(cyphertext=cypher_text,rotors=new_rotors)
+                        
                         return {"body": response.model_dump()}
                     
                     case _:
